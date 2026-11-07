@@ -1,92 +1,88 @@
 # MediBridge
 
-**Healthcare Coordination and AI-Assisted Diagnostics — Backend**
+**Healthcare Coordination & AI-Assisted Diagnostics — Django REST Framework Backend**
 
-MediBridge is a Django REST Framework backend for coordinating clinical and diagnostic workflows between patients, doctors, and diagnostic centers. It combines role-aware access to patient records, consultations, diagnostic investigations, prescriptions, secure document handling, and human-reviewed AI-assisted chest X-ray analysis.
+MediBridge is a role-aware healthcare coordination backend that connects patients, doctors, and diagnostic-center teams through a structured set of clinical and diagnostic workflows. It provides JWT-based authentication, patient–doctor relationships, consultations, clinical observations, diagnostic requests, secure attachment handling, independently verified reports, prescriptions, PDF generation, and human-reviewed AI-assisted chest X-ray analysis.
 
-> **Project status:** Internship demonstration backend. The implementation excerpts and local verification output shared during development show a working Django API, report and prescription PDF generation, a TorchXRayVision inference integration, and six passing automated tests at the latest reported test run. Full security regression testing and production hardening remain outstanding.
+> **Project classification:** Internship demonstration backend. The repository contains a working API implementation and an automated test suite. It is not a deployed clinical service, a production-certified health information system, or a clinically validated diagnostic device.
 
-## Contents
-
-- [Capabilities](#capabilities)
-- [Roles](#roles)
-- [Technology](#technology)
-- [Application structure](#application-structure)
-- [Quick start](#quick-start)
-- [API documentation](#api-documentation)
-- [Core workflows](#core-workflows)
-- [AI scope and limitations](#ai-scope-and-limitations)
-- [Security and data handling](#security-and-data-handling)
-- [Validation commands](#validation-commands)
-- [Documentation](#documentation)
-
-## Capabilities
-
-- Custom email-based user model with UUID identifiers.
-- JWT authentication and role-based API access.
-- Patient and doctor profiles.
-- Doctor–patient relationships and consent/relationship actions.
-- Diagnostic centers and staff memberships.
-- Consultations and clinical observations.
-- Diagnostic service catalogue and diagnostic requests.
-- Private diagnostic attachments with file validation and authorized downloads.
-- Diagnostic report preparation, independent verification, release, and PDF download.
-- Prescription creation, structured medication items, issue workflow, and PDF download.
-- AI model registration and traceable analysis records.
-- TorchXRayVision DenseNet121 integration for supported chest X-ray services.
-- Human review of AI analyses before attaching an AI result snapshot to a diagnostic report.
-- OpenAPI schema, Swagger UI, and ReDoc.
-
-## Roles
-
-| Role | Intended responsibilities |
+| Project resource | Link |
 |---|---|
-| Patient | Access their own clinical information, create or follow permitted diagnostic requests, and view released reports and issued prescriptions. |
-| Doctor | Work with patients through authorized relationships, manage consultations and observations, and create/issue prescriptions subject to verification and relationship rules. |
-| Diagnostic staff | Work on requests assigned to their diagnostic center, upload permitted attachments, run supported AI analysis, and prepare reports. |
-| Report verifier | Independently verify and release reports when the user's center membership grants verifier authority. |
-| Administrator | Perform authorized administrative and account-management tasks. |
+| GitHub repository | [github.com/jim8489/MediBridge](https://github.com/jim8489/MediBridge) |
+| Project landing page | [GitHub Pages](https://jim8489.github.io/MediBridge/) |
+| OpenAPI / Swagger reference | [Static Swagger documentation](https://jim8489.github.io/MediBridge/swagger/) |
+| Local interactive Swagger | `http://127.0.0.1:8000/api/docs/` |
 
-The exact access available to a particular user depends on both the role and the relevant resource relationship or center membership. A role label alone is not a substitute for object-level authorization.
+The GitHub Pages Swagger site is a static, read-only API reference. It does not connect to a deployed MediBridge backend. Interactive requests are available when the project is run locally.
 
-## Technology
+## Product scope
 
-| Area | Technology/configuration |
+MediBridge is designed around distinct responsibilities and controlled transitions between the patient, clinician, and diagnostic-center workflows.
+
+### Core capabilities
+
+- **Identity and access:** custom email-based user model, UUID identifiers, JWT access/refresh authentication, patient registration, and role-aware API permissions.
+- **Patient–doctor coordination:** relationship requests, doctor acceptance, revocation, and access constrained by the relationship state.
+- **Clinical records:** consultations with a draft/signing lifecycle and patient- or clinician-recorded observations.
+- **Diagnostic operations:** diagnostic-center/service records, patient diagnostic requests, staff acceptance and start actions, attachment upload/download, and request lifecycle management.
+- **Report governance:** report submission, independent verification, release, authorized retrieval, and PDF download.
+- **Prescription management:** structured prescription items, doctor-controlled issue workflow, patient access to issued prescriptions, and PDF download.
+- **AI-assisted decision support:** registered TorchXRayVision DenseNet121 inference for supported chest X-ray requests, persisted analysis provenance, human review, and an AI-assistance snapshot in the released report.
+- **API documentation:** generated OpenAPI schema, local Swagger UI, ReDoc, and a static GitHub Pages Swagger reference.
+
+## User roles
+
+| Role | Main responsibilities | Important access condition |
+|---|---|---|
+| Patient | Maintain their profile, request diagnostic services, view their clinical information, and access released reports and issued prescriptions. | Patient-owned resources and workflow state restrict access. |
+| Doctor | Work with connected patients, create/sign consultations, record clinical observations, review authorized reports, and create/issue prescriptions. | Approved doctor profile and applicable active patient relationship. |
+| Diagnostic staff | Process requests assigned to their diagnostic center, upload permitted attachments, run supported AI analysis, and prepare reports. | Active membership in the center associated with the request/service. |
+| Report verifier | Independently verify and release prepared diagnostic reports. | Authorized verifier membership; the report preparer cannot verify their own report. |
+| Administrator | Perform permitted administrative and account-management tasks. | Django staff/admin privileges and endpoint-specific authorization. |
+
+Access is determined by the user's role **and** the relevant patient relationship, diagnostic-center membership, resource ownership, and workflow state. A role label or knowledge of a UUID does not by itself grant access.
+
+## Technology stack
+
+| Layer | Technology |
 |---|---|
-| Language | Python 3.11 (3.11.3 used in local development) |
+| Language/runtime | Python 3.11 (3.11.3 used in local development) |
 | Web framework | Django 5.2 |
-| API | Django REST Framework |
-| Authentication | djangorestframework-simplejwt |
-| API schema | drf-spectacular / OpenAPI |
-| Development database | SQLite |
-| Alternative database configuration | PostgreSQL URL via dj-database-url and psycopg |
-| AI runtime | PyTorch, TorchVision, TorchXRayVision |
-| AI model | DenseNet121, `densenet121-res224-all` weights |
-| PDF generation | ReportLab (local environment version reported: 5.1.0) |
-| Configuration | python-dotenv and environment variables |
+| REST API | Django REST Framework |
+| Authentication | Simple JWT |
+| API schema/documentation | drf-spectacular, OpenAPI, Swagger UI, ReDoc |
+| Local database | SQLite |
+| Configurable database backend | PostgreSQL URL configuration using `dj-database-url` and `psycopg` |
+| AI inference | PyTorch, TorchVision, TorchXRayVision |
+| Model | DenseNet121, `densenet121-res224-all` weights |
+| PDF generation | ReportLab |
+| Environment configuration | `python-dotenv` and environment variables |
+
+Pinned dependency versions are maintained in [`requirements.txt`](requirements.txt). The application was developed and tested locally; PostgreSQL configuration is available but should be independently validated in the target deployment environment.
 
 ## Application structure
 
 ```text
 MediBridge/
-├── accounts/          # Custom user, profiles, registration, JWT/current-user APIs
+├── accounts/          # Custom user, patient/doctor profiles, registration, JWT APIs
 ├── organizations/     # Diagnostic centers and center memberships
-├── patients/          # Doctor–patient relationships, consultations, observations
+├── patients/          # Relationships, consultations, clinical observations
 ├── diagnostics/       # Services, requests, attachments, reports, AI analyses
 ├── prescriptions/     # Prescriptions, medication items, prescription PDFs
-├── config/            # Django settings, root URLs, ASGI/WSGI
-├── docs/              # Project documentation
-├── samples/           # Demonstration sample(s), subject to redistribution checks
+├── config/            # Django settings, URL configuration, renderers
+├── docs/              # Architecture, setup, API, security documentation
+├── docs/swagger/      # Static OpenAPI document and Swagger UI
+├── samples/           # Demonstration sample assets; review redistribution rights
 ├── manage.py
 ├── requirements.txt
 └── .env.example
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the conceptual model relationships and workflows.
+For the domain model, authorization boundaries, and lifecycle diagrams, see [Architecture](docs/ARCHITECTURE.md).
 
-## Quick start
+## Run locally
 
-### 1. Create and activate a virtual environment
+### 1. Create a virtual environment
 
 macOS/Linux:
 
@@ -109,19 +105,13 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-**Dependency note:** the `requirements.txt` shown during project review did not yet list ReportLab, although the local environment reported `reportlab==5.1.0` and both PDF features were working. Add this line to `requirements.txt` before relying on a fresh installation:
-
-```text
-reportlab==5.1.0
-```
-
-### 3. Configure environment
+### 3. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-If `.env` already exists, do not overwrite it. Set a unique `SECRET_KEY` and keep `.env` out of version control. The supplied template is for local development, not production.
+If `.env` already exists, do not overwrite it. Set a unique, high-entropy `SECRET_KEY`; keep `.env` out of source control. The sample configuration is intended for local development only.
 
 ### 4. Apply migrations and create an administrator
 
@@ -130,98 +120,106 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-The project contains migrations. For a normal clone/setup, applying them with `migrate` is sufficient; do not create new migrations unless models have intentionally changed.
+Create demo doctor profiles, diagnostic centers, and center memberships through the authorized local setup process or Django admin. Center staff require an active membership for the relevant center. Doctors need an approved profile for doctor-specific operations.
 
-### 5. Run the API
+### 5. Start the server
 
 ```bash
 python manage.py runserver
 ```
 
-Useful local URLs:
-
-| Resource | URL |
+| Resource | Local URL |
 |---|---|
 | Health check | `http://127.0.0.1:8000/api/health/` |
-| Swagger UI | `http://127.0.0.1:8000/api/docs/` |
+| Interactive Swagger UI | `http://127.0.0.1:8000/api/docs/` |
 | ReDoc | `http://127.0.0.1:8000/api/redoc/` |
 | OpenAPI schema | `http://127.0.0.1:8000/api/schema/` |
 | Django admin | `http://127.0.0.1:8000/admin/` |
 
-For detailed setup and AI environment notes, see [docs/SETUP.md](docs/SETUP.md). For endpoint groups and workflow examples, see [docs/API_GUIDE.md](docs/API_GUIDE.md).
+See [Setup and Reproducibility](docs/SETUP.md) for environment configuration, AI runtime notes, and verification commands. See [API Guide](docs/API_GUIDE.md) for endpoint groups and workflows.
 
-## API documentation
+## End-to-end workflows
 
-The generated OpenAPI schema is the source of truth for exact request fields, response schemas, action routes, and accepted parameters. Some router actions and nested routes should be checked in Swagger rather than inferred from this summary.
+### Patient–doctor and clinical-record workflow
 
-All API paths are rooted under `/api/`. Most endpoints require JWT authentication. Obtain a token at `POST /api/auth/token/` and authorize Swagger using the access token.
+1. A patient creates a relationship request for an approved doctor.
+2. The requested doctor accepts the relationship.
+3. The connected doctor creates and signs a consultation.
+4. The doctor records clinical observations; the patient can also add supported patient-reported observations to their own record.
+5. Either the patient or the connected doctor can revoke the relationship, subject to the endpoint's authorization rules.
 
-## Core workflows
+### Diagnostic investigation and report workflow
 
-### Diagnostic investigation
+1. A patient or eligible clinician creates a diagnostic request for a service.
+2. Authorized center staff accept and start the request.
+3. Center staff upload an eligible attachment to the in-progress request.
+4. For a supported chest X-ray service, authorized staff can run AI inference.
+5. An authorized reviewer reviews the AI analysis. The report preparer and report verifier must be different users.
+6. Center staff submit the diagnostic report, optionally linking an accepted AI analysis.
+7. An authorized verifier verifies the report; an authorized user releases it.
+8. The request is marked completed. The patient can retrieve the released report and download its PDF. An authorized doctor can retrieve reports allowed by the ordering-doctor or active-relationship access rules.
 
-1. A patient or authorized doctor creates a diagnostic request.
-2. Eligible center staff act on the request through the diagnostic workflow.
-3. Center staff upload a clinical image or document while the investigation is in the permitted state.
-4. For supported chest X-ray services, staff can request AI analysis.
-5. An authorized reviewer reviews the AI output.
-6. Center staff submit a diagnostic report, optionally referencing an accepted AI analysis.
-7. A different authorized verifier verifies and releases the report.
-8. The patient can access the released report and download its PDF.
-
-### Prescription
+### Prescription workflow
 
 1. An approved doctor with an active patient relationship creates a draft prescription.
-2. The prescription contains one or more structured medication items and general instructions.
+2. The doctor adds one or more structured medication items and instructions.
 3. The issuing doctor issues the prescription.
-4. The patient can access their issued prescription and download its PDF.
+4. The patient can retrieve their issued prescription and download its PDF. Other patients cannot access it.
 
-## AI scope and limitations
+## AI scope, interpretation, and limitations
 
-The integrated model is TorchXRayVision DenseNet121 with `densenet121-res224-all` weights. The current API checks that the requested diagnostic service is a chest X-ray service before running this model.
+The current AI integration uses TorchXRayVision DenseNet121 with `densenet121-res224-all` weights for the supported chest X-ray workflow. The integration records the selected model, source attachment, request, submitter, analysis status, pathology scores, score semantics, and human-review information.
 
-The model produces pathology scores with associated score semantics. Those scores are not calibrated probabilities and are not, by themselves, diagnoses. The system records the model, source attachment, analysis status, scores, review status, reviewer, notes, and timestamps. The intended report workflow keeps AI decision-support output separate from clinician-entered findings and impression, and requires an accepted/reviewed analysis before including it.
+AI scores are model outputs, **not calibrated probabilities, confirmed findings, or diagnoses**. The application requires an accepted human review before an analysis snapshot is included in a diagnostic report. Clinician-authored findings and impression remain separate from the AI-assistance data.
 
-Do not use this chest X-ray model for DFU photographs, PDFs, or other imaging modalities. The integration is an engineering demonstration and has not been established as a clinically validated or regulated diagnostic device.
+The model is not intended for diabetic-foot-ulcer photographs, PDFs, or unrelated imaging modalities. This integration is an engineering demonstration and has not been clinically validated or approved as a regulated diagnostic device.
 
 ## Security and data handling
 
-Implemented safeguards visible in the shared source include role checks, patient ownership checks, doctor–patient relationship checks, active diagnostic-center membership checks, report release restrictions, independent report verification, file validation, and private attachment streaming after authorization.
+Implemented controls include role-aware permissions, patient ownership checks, doctor–patient relationship checks, diagnostic-center membership checks, report release restrictions, independent report verification, validated file uploads, private diagnostic attachment storage, and authorization before file/PDF downloads.
 
-Before sharing or deploying the project:
+Automated tests cover registration rules, AI inference validation, diagnostic authorization, patient–doctor relationship operations, consultation workflows, observation access, and selected cross-patient/cross-center restrictions. The latest reported local run passed **27 automated tests**. This is meaningful regression coverage, not a substitute for a formal security audit or penetration test.
+
+Before any hosted deployment:
 
 - Use synthetic or appropriately licensed demonstration data only.
-- Never commit `.env`, database files, private medical attachments, or credentials.
-- Keep diagnostic attachments in private storage; do not expose them using public media URLs.
-- Use a unique secret key and disable debug mode in a deployment.
-- Configure TLS, secure cookies/headers, database access restrictions, backups, monitoring, and operational controls for any hosted environment.
-- Complete the planned automated security regression tests. The current test count is not a substitute for a security audit or penetration test.
+- Never commit `.env`, database files, private attachments, access tokens, or credentials.
+- Keep diagnostic files in private storage; do not expose private uploads through public media URLs.
+- Set `DEBUG=False`, a unique secret key, and a strict `ALLOWED_HOSTS` configuration.
+- Configure HTTPS, secure cookies/headers, database and storage protection, backups, monitoring, alerting, and operational procedures.
+- Complete privacy, legal, regulatory, and clinical reviews appropriate to the deployment jurisdiction and intended use.
 
-## Validation commands
+## Verification status
 
-```bash
-python manage.py check
-python -m compileall diagnostics prescriptions
-python manage.py spectacular --file schema.yml --validate
-python manage.py test
-```
+Latest reported local verification:
 
-The latest local verification shared on 6 November 2026 reported:
+| Check | Result |
+|---|---|
+| `python manage.py test -v 2` | **27 tests passed** |
+| Django system check during test run | No issues reported |
+| `python manage.py spectacular --file schema.yml --validate` | **0 errors; 24 warnings across 10 unique warning categories** |
+| AI-assisted report workflow | Manually completed; released report contained 18 AI scores with review status `ACCEPTED` |
+| Diagnostic report PDF download | Manually verified successfully |
+| Prescription PDF download | Manually verified successfully after correcting the action's PDF renderer configuration |
 
-- Django system check: no issues.
-- Python compile check for `diagnostics` and `prescriptions`: completed.
-- OpenAPI generation: zero errors, with 24 warnings (10 unique categories) remaining.
-- Django test suite: six tests passed.
+The remaining OpenAPI warnings concern serializer method return-type hints and UUID-like path-parameter type inference. They do not prevent schema generation, but should be resolved in a future documentation-quality pass. See [Security and Verification](docs/SECURITY_AND_VERIFICATION.md) for test coverage and boundaries.
 
-These results describe that reported local run only. The planned full role-based security regression suite and fresh end-to-end AI-assisted report test were still outstanding at that point.
+## Current boundaries and future scope
+
+MediBridge is a backend demonstration; it does not include a patient or doctor frontend, dashboard, or automatic report-notification service. Doctors retrieve authorized reports through the report list, detail, and PDF download API operations.
+
+A `PatientConsent` model exists, but the current API schema does not expose a separate consent-management endpoint. The relationship workflow should therefore not be represented as a complete granular consent-management system.
+
+The backend has not been deployed as a public API service. GitHub Pages hosts the project landing page and a static Swagger reference only. Production deployment, comprehensive audit logging, rate limiting/abuse controls, backup/restore exercises, formal security testing, clinical validation, and regulatory review remain outside the demonstrated scope.
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
-- [Setup and reproducibility](docs/SETUP.md)
-- [API guide](docs/API_GUIDE.md)
-- [Security and verification status](docs/SECURITY_AND_VERIFICATION.md)
+- [Setup and Reproducibility](docs/SETUP.md)
+- [API Guide](docs/API_GUIDE.md)
+- [Security and Verification](docs/SECURITY_AND_VERIFICATION.md)
+- [OpenAPI / Swagger reference](https://jim8489.github.io/MediBridge/swagger/)
 
-## Project status and intended use
+---
 
-MediBridge is an internship demonstration backend, not a production-certified clinical system. It requires further automated authorization testing, deployment hardening, operational safeguards, privacy/regulatory review, and clinical evaluation before any real-world clinical use.
+**MediBridge — structured healthcare coordination, controlled diagnostic workflows, and human-reviewed AI assistance.**

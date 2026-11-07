@@ -141,6 +141,7 @@ paths:
   /api/diagnostics/reports/{id}/download/:
     get:
       operationId: download_diagnostic_report_pdf
+      description: Downloads a formatted PDF of a released diagnostic report.
       summary: Download a released diagnostic report as PDF
       parameters:
       - in: path

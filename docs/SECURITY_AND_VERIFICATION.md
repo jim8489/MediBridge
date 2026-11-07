@@ -1,106 +1,142 @@
-# MediBridge — Security and Verification Status
+# MediBridge — Security and Verification
 
-## 1. Purpose
+## 1. Purpose and assurance boundary
 
-This document distinguishes implemented safeguards and observed verification results from tests and production controls that remain outstanding. It is intended to keep project demonstrations accurate and avoid overstating security assurance.
+This document records the security controls represented in the current implementation and the verification results reported during local development. It distinguishes automated regression coverage and manual API checks from security, privacy, operational, and clinical assurances that have **not** been established.
 
-## 2. Safeguards visible in the shared implementation
+MediBridge is an internship demonstration backend. Passing its current test suite does not constitute a formal security audit, penetration test, privacy certification, production-readiness assessment, or clinical validation.
+
+## 2. Implemented security and workflow controls
 
 ### Authentication and identity
 
-- Custom user model with email-based authentication.
-- UUID identifiers in core models.
+- Custom email-based user model with UUID identifiers in core domain records.
 - JWT access/refresh authentication.
-- Patient-only public registration flow as described in the existing README and account URL configuration.
+- Public registration is intended for patient accounts; elevated doctor and diagnostic-center staff roles require authorized provisioning/verification.
+- Authenticated current-user endpoint for retrieving the caller's profile/role information.
 
-### Resource authorization
+### Resource-level authorization
 
-- Patient report queries are restricted to the authenticated patient's own released reports.
-- Patient prescription queries are restricted to the authenticated patient's own issued prescriptions.
-- Doctor report access checks ordering-doctor or active doctor–patient relationship conditions.
-- Prescription creation requires an approved doctor profile and active doctor–patient relationship.
-- Diagnostic staff operations check active membership in the center associated with the request/service.
-- Attachment download checks patient ownership/report release, doctor authorization, or center membership according to the caller role.
+- Patient report querysets are restricted to the authenticated patient's own released reports.
+- Patient prescription querysets are restricted to the authenticated patient's own issued prescriptions.
+- Doctor report access is constrained by the ordering-doctor or active doctor–patient relationship rules.
+- Prescription creation requires an approved doctor profile and an active relationship with the patient.
+- Consultation and observation access/creation is constrained by the relevant patient, doctor, ownership, and relationship rules.
+- Diagnostic staff operations require active membership in the diagnostic center associated with the service/request.
+- Attachment and PDF download actions check authorization before returning file content.
+- Unauthenticated requests to protected medical-record and report endpoints are rejected.
 
-### Workflow controls
+### Workflow integrity
 
-- Diagnostic reports move through submitted, verified, and released states.
+- Patient–doctor relationships have request/accept/revoke operations; the requested doctor accepts the pending relationship.
+- Consultation records support a draft/signing lifecycle.
+- Observations support patient-reported and clinician-recorded sources, with role-specific access.
+- Diagnostic report states progress through submitted, verified, and released states.
 - A report must be verified before release.
-- The person who prepared a report cannot verify it.
-- Releasing a report marks the linked diagnostic request completed.
+- The report preparer cannot verify their own report.
+- Releasing a report marks the associated diagnostic request completed.
 - Only the issuing doctor can issue their draft prescription.
-- Patients are shown issued prescriptions, not drafts.
+- Patients are restricted to issued prescriptions, not drafts.
 
-### File handling
+### File handling and PDF delivery
 
-- Diagnostic attachments use private storage in the implementation.
-- The download endpoint streams the file after authorization instead of exposing a public storage URL.
-- File validation checks permitted file characteristics, including file signature validation in the shared serializer/model implementation.
+- Diagnostic attachments use private storage.
+- Upload validation checks supported file characteristics, including extension and file-signature validation in the implementation.
+- Attachment downloads stream file contents after authorization rather than exposing a public storage URL.
+- Diagnostic reports and prescriptions are generated as PDFs from persisted records using ReportLab.
+- PDF download actions declare a PDF renderer so clients requesting `Accept: application/pdf` can negotiate the response correctly.
 
-### AI provenance and human review
+### AI traceability and human review
 
-- AI analyses record the model, source attachment, request, submitter, output/status, score semantics, and review information.
-- The report-submission logic validates that a selected AI analysis belongs to the same request, completed successfully, was accepted, has a recorded reviewer, and contains pathology scores.
-- AI information is stored separately from clinician-authored findings and impression.
-- The model is restricted to the supported chest X-ray workflow.
+- AI analysis records retain the diagnostic request, source attachment, registered model, submitting user, output/status, score semantics, and review information.
+- Report submission validates that a referenced analysis belongs to the same request, completed successfully, has an accepted review and recorded reviewer, and contains pathology scores.
+- The report stores an AI-assistance snapshot separately from clinician-entered findings and impression.
+- The current model integration is limited to the supported chest X-ray workflow.
+- AI scores are model outputs, not calibrated probabilities or confirmed diagnoses.
 
-## 3. Local validation results reported on 6 November 2026
+## 3. Automated test coverage
 
-The user shared the following terminal results:
+The latest reported command was:
 
-| Command | Observed result |
-|---|---|
-| `python manage.py check` | No system-check issues. |
-| `python -m compileall diagnostics prescriptions` | Completed. |
-| `python manage.py spectacular --file schema.yml --validate` | Zero errors; 24 warnings (10 unique categories). |
-| `python manage.py test` | Six tests found; all six passed. |
+```bash
+python manage.py test -v 2
+```
 
-OpenAPI warnings included unresolved serializer method return type hints and path-parameter type inference for UUID-like identifiers. These were warnings, not schema-generation errors, but should be cleaned up before treating the schema as final.
+**Result: 27 tests ran and all 27 passed.** The test runner also reported no Django system-check issues.
 
-The existing AI analysis originally had 18 scores in `model_output` but an empty `pathology_scores` field. A one-time recovery command copied the existing 18 scores into `pathology_scores`; the user confirmed the recovery output showed 18 stored scores and `ACCEPTED` review status.
+| Test module | Tests | Coverage represented |
+|---|---:|---|
+| `accounts.tests` | 3 | Patient registration, password-mismatch rejection, and prevention of role escalation through public registration. |
+| `diagnostics.test_api_security` | 10 | Patient report ownership, report release restrictions, authorized doctor report access, cross-patient prescription denial, own prescription download, cross-center staff isolation, report self-verification denial, and unauthenticated report access. |
+| `patients.test_api_workflows` | 11 | Relationship request/accept/revoke, unauthorized relationship actions, consultation create/sign/read access, relationship requirements, observation ownership and role restrictions, and authentication requirements. |
+| `diagnostics.test_ai_inference` | 3 | Rejection of document attachments, rejection of non-finite inference scores, and return of named pathology scores. |
+| **Total** | **27** | **All tests passed in the reported local run.** |
 
-## 4. Tests still required
+These tests run against Django's test database and exercise API endpoints or inference-service behavior using test fixtures. They do not test every endpoint, every possible role combination, external deployment configuration, or every failure mode.
 
-The full automated security regression suite had not yet been implemented at the last reported milestone. Recommended cases include:
+## 4. Manual API verification reported
 
-| Scenario | Required expectation |
-|---|---|
-| Patient A requests Patient B's report | Denied; no data leakage. |
-| Patient A downloads Patient B's prescription | Denied. |
-| Unrelated doctor requests a patient's report | Denied. |
-| Authorized doctor requests an associated patient's report | Allowed. |
-| Staff from Center A accesses Center B's request | Denied. |
-| Patient downloads an unreleased diagnostic report | Denied. |
-| Report preparer attempts self-verification | Denied. |
-| Different authorized verifier verifies the report | Allowed. |
-| Unapproved doctor creates a prescription | Denied. |
-| Unauthenticated or unauthorized user uploads an attachment | Denied. |
-| Patient downloads own released report | Allowed. |
-| Patient downloads own issued prescription | Allowed. |
+The following end-to-end checks were also reported during local Swagger/API testing:
 
-These should be Django REST Framework API tests using test database fixtures, authenticated clients, and the actual route actions. Tests should cover both denial and legitimate access.
+- The diagnostic request progressed through the processing and report lifecycle.
+- A report was released and its linked diagnostic request was completed.
+- The released report included an `ai_assistance` snapshot containing **18 pathology scores**.
+- The AI assistance review status was `ACCEPTED`, with a reviewer recorded.
+- The authorized patient could download the diagnostic report PDF.
+- Cross-patient report download attempts were denied, and unauthenticated report access was rejected.
+- Prescription PDF download initially returned `406 Not Acceptable`; the prescription action was corrected to use the configured PDF renderer, after which the user confirmed the download worked.
 
-## 5. Additional production controls not established by current evidence
+These are developer-reported manual verification results, not a separate automated end-to-end test suite. They demonstrate the tested local workflow and should not be generalized into a claim that every API action has been manually exercised.
 
-Do not claim these controls as completed unless separately implemented and tested:
+## 5. OpenAPI/schema validation
 
-- Formal penetration test or independent security audit.
+The latest reported schema command was:
+
+```bash
+python manage.py spectacular --file schema.yml --validate
+cp schema.yml docs/swagger/openapi.yml
+```
+
+Observed result:
+
+| Metric | Result |
+|---|---:|
+| Schema generation errors | **0** |
+| Schema generation warnings | **24** |
+| Unique warning categories | **10** |
+
+Warnings include unresolved return-type hints for `get_patient_profile` and `get_doctor_profile` in the current-user serializer and path-parameter type inference for UUID-like identifiers in diagnostic, consultation, observation, and prescription viewsets. The schema is generated successfully, but these warnings remain documentation-quality issues to address.
+
+## 6. Known implementation boundaries
+
+- A `PatientConsent` model exists, but the current API schema does not expose a separate consent-management endpoint.
+- No patient/doctor frontend dashboard or automatic report-notification service is included. Authorized doctors retrieve reports through the report list, detail, and download endpoints.
+- The public GitHub Pages Swagger site is a static API reference, not a live connection to a deployed backend.
+- The current AI model is a chest X-ray decision-support integration only. It has not been clinically validated or approved for autonomous diagnosis.
+- Manual API testing and automated regression tests cover important workflows but are not exhaustive.
+
+## 7. Controls not established by current evidence
+
+Do not claim the following controls as completed unless they are implemented and separately verified:
+
+- Independent penetration test, security audit, or threat-model review.
+- Comprehensive audit-event logging for all sensitive record reads and changes.
+- Configured rate limiting, abuse protection, and account lockout controls.
 - Encryption-at-rest configuration for database and file storage.
-- Complete audit-event logging for all sensitive record access and changes.
-- Rate limiting and abuse protection.
-- Backup/restore and disaster-recovery exercises.
-- Production HTTPS and secure cookie/header configuration.
-- Centralized secret management.
+- Production HTTPS, secure cookie/header configuration, and hardened application server deployment.
+- Centralized production secret management and key rotation.
 - Malware scanning/quarantine for uploaded files.
-- Formal privacy impact assessment or regulatory compliance certification.
-- Clinical validation or regulatory approval of the AI model.
-- Production monitoring, alerting, and incident-response procedures.
+- Tested backup/restore and disaster-recovery procedures.
+- Centralized monitoring, alerting, incident response, and operational runbooks.
+- Formal privacy impact assessment, legal/regulatory compliance certification, or data-processing agreements.
+- Clinical evaluation, clinical validation, or regulatory approval of the AI model or product.
 
-## 6. Safe demonstration guidance
+## 8. Safe demonstration guidance
 
-- Use synthetic patient data and demo credentials.
-- Never share `.env`, local database files, or private attachments.
-- Avoid displaying access tokens or passwords in screenshots/videos.
-- Explain AI scores as decision-support outputs, not a diagnosis.
-- Show the independent report-verification workflow.
-- Demonstrate at least one denied cross-patient or cross-center access attempt after the automated security tests exist.
+- Use synthetic patient identities and non-identifiable demonstration data.
+- Never show `.env` contents, passwords, access/refresh tokens, or private file-storage paths in screenshots or videos.
+- Use separate patient accounts to demonstrate cross-patient access restrictions.
+- Use separate diagnostic staff accounts/center memberships to demonstrate center isolation.
+- Show that report preparation and verification are performed by different users.
+- Explain that AI scores are decision-support outputs and require human interpretation; do not present them as diagnoses.
+- Do not use the demonstration model with DFU photographs, PDFs, or unsupported modalities.

@@ -2,10 +2,10 @@
 
 ## 1. Architectural overview
 
-MediBridge is a modular Django REST Framework backend. The application separates identity and authentication, organizational membership, clinical relationships, diagnostic operations, AI analysis, and prescription management into Django apps.
+MediBridge is a modular Django REST Framework backend. Identity, organization membership, patient relationships, clinical records, diagnostic operations, AI analysis, and prescription management are separated into Django applications. Requests pass through JWT authentication and endpoint-specific authorization before reaching domain viewsets, serializers, models, and file/PDF services.
 
 ```text
- Patient / Doctor / Diagnostic Center Staff
+ Patient / Doctor / Diagnostic-Center Staff
                     |
                     v
              Django REST API
@@ -14,14 +14,14 @@ MediBridge is a modular Django REST Framework backend. The application separates
           JWT Authentication
                     |
                     v
-        Role + Resource Authorization
+      Role + Resource Authorization
                     |
        +------------+-------------+
        |            |             |
        v            v             v
     accounts   organizations   patients
        |            |             |
-       |            |             +-- Doctor–patient relationships
+       |            |             +-- Relationships
        |            |             +-- Consultations
        |            |             +-- Observations
        |            |
@@ -35,42 +35,46 @@ MediBridge is a modular Django REST Framework backend. The application separates
           v                   v
       diagnostics         prescriptions
           |                   |
-          +-- Services        +-- Prescription
-          +-- Requests        +-- Prescription items
-          +-- Attachments     +-- Prescription PDF
-          +-- Reports
-          +-- AI model registry
+          +-- Services        +-- Prescription records
+          +-- Requests        +-- Medication items
+          +-- Attachments     +-- Issue workflow
+          +-- Reports         +-- Prescription PDF
+          +-- AI registry
           +-- AI analyses
-          +-- Diagnostic report PDF
+          +-- Report PDF
 ```
 
-This diagram is conceptual. Django model definitions, serializers, viewsets, URL configuration, and generated OpenAPI schema are the authoritative implementation.
+This diagram is conceptual. Django models, serializers, viewsets, URL configuration, permission/queryset logic, and the generated OpenAPI schema define the actual implementation.
 
 ## 2. Application responsibilities
 
 ### `accounts`
 
-Owns the custom user model and identity-related APIs. The user model uses UUID identifiers and email-based authentication. The app also contains patient/doctor profile concepts, patient registration, JWT token endpoints, and the current-user endpoint.
+Owns the custom user model and identity APIs. Users authenticate by email and use UUID identifiers. The app provides patient and doctor profile models, patient registration, JWT token endpoints, and the current-user endpoint. Public registration is intended for patient accounts.
 
 ### `organizations`
 
-Owns diagnostic-center organizations and staff memberships. Center memberships associate a diagnostic staff user with a center and a staff role/status. Center approval and active membership are relevant to center-specific access.
+Owns diagnostic-center records and center memberships. A membership associates a diagnostic staff user with a diagnostic center and membership role/status. Center approval/activation and active membership are relevant to center-scoped operations.
 
 ### `patients`
 
-Owns doctor–patient relationships, consultations, and observations. The active relationship is used by prescription creation and doctor access rules. Consultation validation also checks that the consultation belongs to the selected patient and doctor and is signed where required.
+Owns doctor–patient relationships, consultations, and clinical observations. The relationship lifecycle includes patient initiation, doctor acceptance, and revocation by an authorized participant. Active relationships are used by downstream doctor-access and prescription rules. Consultation and observation serializers/viewsets validate the caller, selected patient, doctor relationship, and relevant consultation state.
 
 ### `diagnostics`
 
-Owns diagnostic services, requests, attachments, reports, AI model registration, and AI analyses. It implements the investigation workflow, private attachment upload/download, AI analysis/review actions, report submission, verification/release, and diagnostic report PDF generation.
+Owns diagnostic services, requests, attachments, reports, AI model registration, and AI analyses. It implements request lifecycle actions, private attachment upload/download, chest X-ray analysis, AI review, report submission, independent verification, release, authorized report retrieval, and diagnostic report PDF generation.
 
 ### `prescriptions`
 
-Owns prescriptions and medication items. A prescription is related to a patient and doctor, may be linked to a consultation, and includes structured medication instructions. The app provides issue and PDF-download actions.
+Owns prescription records and structured medication items. A prescription is related to a patient and doctor and may reference a consultation. The app implements draft creation, issue action, authorized retrieval, and prescription PDF download.
+
+### `config`
+
+Contains project settings, root URL configuration, ASGI/WSGI entry points, and the PDF renderer used to negotiate `application/pdf` responses through Django REST Framework.
 
 ## 3. Domain relationships
 
-The following is a simplified relationship map; it is not a substitute for the model files:
+Simplified domain map:
 
 ```text
 User
@@ -91,81 +95,116 @@ User
                                       `-- DiagnosticRequest
 ```
 
-Important model-level details confirmed in the shared source:
+Important implementation relationships include:
 
-- `DiagnosticReport.request` is a one-to-one relation to a diagnostic request, with `PROTECT` deletion behavior.
-- `DiagnosticAttachment.request` is a foreign key with `PROTECT` deletion behavior and a related name of `attachments`.
-- `AIAnalysis` refers to a diagnostic request, source attachment, registered AI model, submitting user, and optional reviewer.
-- `Prescription` refers to a patient, doctor, and optional consultation.
-- `PrescriptionItem` belongs to a prescription and stores medicine and administration fields.
+- A diagnostic report is linked one-to-one with its diagnostic request.
+- A diagnostic attachment belongs to a diagnostic request.
+- An AI analysis references a diagnostic request, source attachment, registered AI model, submitting user, and optional reviewer.
+- A prescription references a patient, doctor, and optional consultation.
+- Prescription items belong to a prescription and store structured medication/administration details.
 
-## 4. Roles and access control
+## 4. Identity, roles, and authorization
 
-Authorization is based on the authenticated user role plus the relevant resource relationship or organization membership.
+Authorization combines the authenticated user role with resource ownership, patient–doctor relationship state, center membership, and domain workflow state. A UUID is an identifier and does not grant access.
 
 ### Patient
 
-The shared view code restricts a patient report queryset to reports for that patient's profile with `RELEASED` status. Prescription queryset logic restricts patients to their own prescriptions with `ISSUED` status. Diagnostic attachment download additionally checks patient ownership and that the associated report has been released.
+Patient report access is restricted to the authenticated patient's own released reports. Patient prescription access is restricted to their own issued prescriptions. Patients can access their authorized clinical records and create supported patient-reported observations for their own record. Diagnostic attachment downloads additionally enforce ownership and report-release rules where applicable.
 
 ### Doctor
 
-Doctor report access is based on the ordering doctor or an active doctor–patient relationship. Prescription creation requires an approved doctor profile and an active relationship with the selected patient. If a consultation is supplied, it must belong to that doctor and patient and have the required signed status.
+Doctor report retrieval is available through the report list, detail, and PDF download endpoints when the doctor satisfies the ordering-doctor or active doctor–patient relationship rules. Doctor clinical-record and prescription operations are subject to approval, relationship, ownership, and consultation-state requirements. A consultation supplied for a prescription must match the patient and doctor and meet the signed-consultation requirement.
 
 ### Diagnostic staff
 
-Center-specific operations check active membership in the diagnostic center associated with the service/request. The center must also satisfy the activation/approval checks used by the relevant helper and serializer.
+Center-specific operations check active membership in the diagnostic center associated with the service or request. The relevant center must satisfy the activation/approval checks used by the endpoint/helper.
 
 ### Report verifier
 
-Verification requires a membership role accepted by the verifier helper (including owner, center administrator, or report verifier in the shared code). The report preparer cannot verify their own report. Release is permitted only after verification.
+Verification requires a membership role accepted by the verifier logic (including the supported center owner/administrator/report-verifier roles). The report preparer cannot verify their own report. Release is permitted only after verification.
 
 ### Administrator
 
-Administrative access is supported through Django's staff/admin mechanisms where the relevant view permits it. Exact administrator access should be checked per endpoint; do not assume every staff account bypasses every domain permission.
+Administrative access is supported through Django staff/admin mechanisms where the relevant view permits it. A staff flag should not be assumed to bypass every domain-level permission; access remains endpoint-specific.
 
-## 5. Diagnostic workflow and report lifecycle
-
-Conceptually:
+## 5. Patient–doctor and clinical-record workflow
 
 ```text
-Request created
-      |
-      v
-Center accepts / investigation starts
-      |
-      v
-Clinical attachment uploaded
-      |
-      +------> Optional supported AI analysis
-      |                    |
-      |                    v
-      |             Human review
-      |                    |
-      v                    v
-         Diagnostic report prepared
-                    |
-                    v
-             Submitted for review
-                    |
-                    v
-              Independent verifier
-                    |
-                    v
-                Report released
-                    |
-                    v
-          Diagnostic request completed
+Patient initiates relationship request
+                 |
+                 v
+         Requested doctor accepts
+                 |
+                 v
+          Active relationship
+                 |
+       +---------+----------+
+       |                    |
+       v                    v
+ Doctor creates         Clinical observations
+ consultation           are recorded by an
+       |                 authorized participant
+       v                    |
+ Doctor signs               |
+ consultation               |
+       |                    |
+       +---------+----------+
+                 |
+                 v
+       Patient accesses eligible records
+                 |
+                 v
+     Patient or doctor may revoke relationship
 ```
 
-The report status values confirmed in the model are `SUBMITTED`, `VERIFIED`, and `RELEASED`. The release action checks that the report is already verified, updates `released_at`, and marks the associated diagnostic request completed.
+Consultations support a draft/signing lifecycle. Patients are intended to retrieve signed consultations, while doctor access is restricted by the applicable relationship and ownership rules. Observations support patient-reported and clinician-recorded data with role-specific access.
 
-The report preparer and verifier are separate users by enforcement in the verification action.
+A `PatientConsent` model exists, but the current OpenAPI schema does not expose a dedicated consent-management API. Relationship acceptance/revocation should not be described as a complete granular consent-management service.
 
-## 6. AI inference and review architecture
+## 6. Diagnostic workflow and report lifecycle
 
-The current integration uses TorchXRayVision DenseNet121 and `densenet121-res224-all` weights. The diagnostic request's service description is checked for a chest X-ray service before this model is used.
+```text
+Diagnostic request created
+             |
+             v
+  Center staff accept / start
+             |
+             v
+    Clinical attachment upload
+             |
+             +------> Optional supported AI analysis
+             |                    |
+             |                    v
+             |              Human review
+             |                    |
+             v                    v
+        Diagnostic report prepared
+                    |
+                    v
+               Submitted
+                    |
+                    v
+        Independent verification
+                    |
+                    v
+                 Released
+                    |
+                    v
+       Diagnostic request completed
+                    |
+                    v
+     Authorized patient / doctor retrieval
+```
 
-The analysis record stores:
+The report state values are `SUBMITTED`, `VERIFIED`, and `RELEASED`. A report must be verified before release, and the preparer and verifier must be different users. Release updates the report's release metadata and completes the linked diagnostic request.
+
+A doctor does not need a frontend dashboard for the backend to enforce access: an authorized doctor retrieves visible reports through `GET /api/diagnostics/reports/`, retrieves an individual report through `GET /api/diagnostics/reports/{id}/`, and downloads its PDF through `GET /api/diagnostics/reports/{id}/download/`. The user interface that consumes these endpoints is outside the current project scope.
+
+## 7. AI inference and human-review architecture
+
+The current integration uses TorchXRayVision DenseNet121 with `densenet121-res224-all` weights. The analysis action checks that the diagnostic service is a supported chest X-ray service and that the source attachment is an eligible clinical image belonging to the same request.
+
+The analysis record retains:
 
 - Diagnostic request and source attachment.
 - Registered AI model.
@@ -176,32 +215,28 @@ The analysis record stores:
 - `model_output` metadata JSON.
 - Review status, reviewer, notes, and review timestamp.
 
-The intended report-submission implementation accepts an optional `ai_analysis_id`. It scopes the selected analysis to the same diagnostic request and requires completed analysis, accepted review, a recorded reviewer, and non-empty pathology scores. It then copies a snapshot of model information, source image, scores, semantics, and review information under `findings.ai_assistance`.
+The report-submission logic accepts an optional `ai_analysis_id`. The selected analysis must belong to the same request, complete successfully, have an accepted review and recorded reviewer, and contain pathology scores. The backend snapshots model/source information, scores, score semantics, and review information under `findings.ai_assistance`.
 
-The clinician-entered findings and impression remain distinct from AI output. The PDF separates clinical findings, AI decision-support results, and clinical impression.
+Clinician-entered findings and impression remain separate from AI output. Report PDFs distinguish clinical findings, AI decision-support information, and clinical impression. Score values are not calibrated probabilities or diagnoses; a human reviewer must interpret them in clinical context. The model is restricted to supported chest X-ray inputs and must not be used for DFU images or unrelated modalities.
 
-The score values must not be described as calibrated probabilities or as a diagnosis. A human reviewer must interpret them in context. The model is limited to supported chest X-ray inputs; it must not be applied to DFU images or unrelated modalities.
+## 8. Prescription workflow
 
-## 7. Prescription workflow
+Prescription statuses include `DRAFT`, `ISSUED`, and `CANCELLED`. Prescription items store medication name, generic name, strength, dosage, route, frequency, duration, quantity, and instructions.
 
-A prescription has statuses `DRAFT`, `ISSUED`, and `CANCELLED` in the shared model. Prescription items contain medication name, generic name, strength, dosage, route, frequency, duration, quantity, and instructions.
+Creation requires an approved doctor and an active patient relationship. At least one medication item is required. If a consultation is linked, it must match the patient and doctor and meet the signed-state requirement. Prescription and item creation are handled together by the serializer's transaction. Only the issuing doctor can issue the draft. Patient access is limited to their own issued prescriptions.
 
-Creation is restricted to an approved doctor and requires an active doctor–patient relationship. If a consultation is selected, it must match the patient and doctor and meet the signed-status condition. At least one medication item is required. The serializer uses a database transaction to create the prescription and its items together.
+## 9. File and PDF handling
 
-Only the issuing doctor can issue the draft prescription. Patient list access is restricted to their own issued prescriptions. The PDF generator builds a downloadable representation from the saved prescription and medication items.
+Diagnostic attachments use configured private storage. Upload validation checks supported characteristics, including extension/signature checks. Download actions authorize the caller before streaming file content; private storage URLs are not exposed as public links.
 
-## 8. File and PDF handling
+Diagnostic reports and prescriptions are generated as PDFs using ReportLab from persisted database records. The source database records remain authoritative. PDF download actions declare a PDF renderer so clients specifying `Accept: application/pdf` can negotiate the response.
 
-Diagnostic attachments use the configured private diagnostic storage. Upload validation checks supported file characteristics (including extension/signature validation in the shared serializer/model implementation). Download endpoints stream files after permission checks rather than revealing a public storage URL.
+## 10. Data-integrity practices
 
-Diagnostic reports and prescriptions are rendered as PDFs using ReportLab. The PDFs are generated from persisted database records. The source record remains authoritative.
+The implementation uses UUID identifiers in core domain models, relational foreign keys, a one-to-one diagnostic report/request relationship, selected `PROTECT` deletion rules, explicit status choices, validation, and database transactions for multi-record operations.
 
-## 9. Data integrity practices
+These practices reduce accidental deletion and partial writes. They do not replace backups, restore tests, comprehensive audit logging, or a formal data-governance process.
 
-The implementation uses UUID primary keys in core domain models, relational foreign keys, a one-to-one diagnostic report/request relationship, selected `PROTECT` deletion rules, explicit status choices, validation, and database transactions for multi-step operations.
+## 11. Current boundaries
 
-These practices reduce accidental deletion and partial writes. They do not replace database backup, restore testing, audit logging, or a formal data-governance process.
-
-## 10. Current boundaries
-
-This architecture describes the backend functionality established in the shared source and development history. It does not claim a production deployment, frontend application, completed penetration test, formal clinical validation, regulatory approval, full audit trail, or tested disaster-recovery process.
+This architecture describes the backend implementation and the local verification results reported for the project. It does not claim a deployed public API service, patient/doctor frontend, automatic report notifications, completed penetration test, formal clinical validation, regulatory approval, complete audit trail, or tested disaster-recovery process.
