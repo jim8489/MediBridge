@@ -1,0 +1,2163 @@
+openapi: 3.0.3
+info:
+  title: MediBridge API
+  version: 0.1.0
+  description: Backend API for a healthcare coordination platform connecting patients,
+    doctors, and diagnostic centers. This is an internship demonstration build.
+paths:
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+          description: ''
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Public registration endpoint. It always creates a PATIENT account.
+      summary: Register a patient
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientRegistrationRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientRegistration'
+          description: ''
+  /api/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediBridgeTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediBridgeTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediBridgeTokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/diagnostics/reports/:
+    get:
+      operationId: diagnostics_reports_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDiagnosticReportReadList'
+          description: ''
+  /api/diagnostics/reports/{id}/:
+    get:
+      operationId: diagnostics_reports_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportRead'
+          description: ''
+  /api/diagnostics/reports/{id}/download/:
+    get:
+      operationId: download_diagnostic_report_pdf
+      description: Generates and downloads a formatted PDF containing the diagnostic
+        report, clinical findings and impression.
+      summary: Download a released diagnostic report as PDF
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/diagnostics/reports/{id}/release/:
+    post:
+      operationId: diagnostics_reports_release_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportReadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportReadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportReadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportRead'
+          description: ''
+  /api/diagnostics/reports/{id}/verify/:
+    post:
+      operationId: diagnostics_reports_verify_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportReadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportReadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportReadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportRead'
+          description: ''
+  /api/diagnostics/requests/:
+    get:
+      operationId: diagnostics_requests_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDiagnosticRequestList'
+          description: ''
+    post:
+      operationId: diagnostics_requests_create
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/:
+    get:
+      operationId: diagnostics_requests_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/accept/:
+    post:
+      operationId: diagnostics_requests_accept_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/analyses/:
+    get:
+      operationId: diagnostics_requests_analyses_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/analyses/{analysis_id}/review/:
+    post:
+      operationId: diagnostics_requests_analyses_review_create
+      parameters:
+      - in: path
+        name: analysis_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/analyze/:
+    post:
+      operationId: diagnostics_requests_analyze_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/attachments/:
+    post:
+      operationId: upload_diagnostic_attachment
+      description: Upload a JPEG, PNG or PDF attachment to an ongoing diagnostic investigation.
+      summary: Upload a diagnostic image or document
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Diagnostics
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticAttachmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticAttachment'
+          description: ''
+  /api/diagnostics/requests/{id}/attachments/{attachment_id}/download/:
+    get:
+      operationId: diagnostics_requests_attachments_download_retrieve
+      description: Download a diagnostic attachment after authorization.
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/start/:
+    post:
+      operationId: diagnostics_requests_start_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/requests/{id}/submit-report/:
+    post:
+      operationId: diagnostics_requests_submit_report_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRequest'
+          description: ''
+  /api/diagnostics/services/:
+    get:
+      operationId: diagnostics_services_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDiagnosticServiceList'
+          description: ''
+    post:
+      operationId: diagnostics_services_create
+      tags:
+      - diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticServiceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticServiceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticServiceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticService'
+          description: ''
+  /api/diagnostics/services/{id}/:
+    get:
+      operationId: diagnostics_services_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticService'
+          description: ''
+  /api/health/:
+    get:
+      operationId: health_check
+      tags:
+      - System
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+          description: ''
+  /api/medical-records/consultations/:
+    get:
+      operationId: medical_records_consultations_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - medical-records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConsultationList'
+          description: ''
+    post:
+      operationId: medical_records_consultations_create
+      summary: Create a consultation (approved doctor only)
+      tags:
+      - Medical Records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+  /api/medical-records/consultations/{id}/:
+    get:
+      operationId: medical_records_consultations_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - medical-records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+  /api/medical-records/consultations/{id}/sign/:
+    post:
+      operationId: medical_records_consultations_sign_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - medical-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+  /api/medical-records/observations/:
+    get:
+      operationId: medical_records_observations_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - medical-records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedObservationList'
+          description: ''
+    post:
+      operationId: medical_records_observations_create
+      tags:
+      - medical-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObservationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ObservationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ObservationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Observation'
+          description: ''
+  /api/medical-records/observations/{id}/:
+    get:
+      operationId: medical_records_observations_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - medical-records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Observation'
+          description: ''
+  /api/medical-records/relationships/:
+    get:
+      operationId: medical_records_relationships_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - medical-records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDoctorPatientRelationshipList'
+          description: ''
+    post:
+      operationId: medical_records_relationships_create
+      tags:
+      - medical-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelationshipCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RelationshipCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RelationshipCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipCreate'
+          description: ''
+  /api/medical-records/relationships/{id}/accept/:
+    post:
+      operationId: medical_records_relationships_accept_create
+      summary: Accept a doctor-patient relationship
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Medical Records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorPatientRelationship'
+          description: ''
+  /api/medical-records/relationships/{id}/revoke/:
+    post:
+      operationId: medical_records_relationships_revoke_create
+      summary: Revoke a doctor-patient relationship
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Medical Records
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorPatientRelationship'
+          description: ''
+  /api/prescriptions/:
+    get:
+      operationId: prescriptions_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - prescriptions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPrescriptionList'
+          description: ''
+    post:
+      operationId: prescriptions_create
+      tags:
+      - prescriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/prescriptions/{id}/:
+    get:
+      operationId: prescriptions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - prescriptions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/prescriptions/{id}/download/:
+    get:
+      operationId: download_prescription_pdf
+      description: Downloads a formatted prescription containing patient details,
+        doctor details and medication instructions.
+      summary: Download an issued prescription as PDF
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Prescriptions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/prescriptions/{id}/issue/:
+    post:
+      operationId: prescriptions_issue_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - prescriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PrescriptionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+components:
+  schemas:
+    AttachmentTypeEnum:
+      enum:
+      - CLINICAL_IMAGE
+      - REPORT_DOCUMENT
+      - SUPPORTING_DOCUMENT
+      type: string
+      description: |-
+        * `CLINICAL_IMAGE` - Clinical Image
+        * `REPORT_DOCUMENT` - Report Document
+        * `SUPPORTING_DOCUMENT` - Supporting Document
+    Consultation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+        patient_number:
+          type: string
+          readOnly: true
+        doctor:
+          type: string
+          format: uuid
+          readOnly: true
+        doctor_name:
+          type: string
+          readOnly: true
+        consultation_date:
+          type: string
+          format: date-time
+        chief_complaint:
+          type: string
+        symptoms:
+          type: string
+        clinical_findings:
+          type: string
+        assessment:
+          type: string
+        treatment_plan:
+          type: string
+        follow_up_notes:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ConsultationStatusEnum'
+          readOnly: true
+        signed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - chief_complaint
+      - created_at
+      - doctor
+      - doctor_name
+      - id
+      - patient
+      - patient_number
+      - signed_at
+      - status
+      - updated_at
+    ConsultationRequest:
+      type: object
+      properties:
+        patient:
+          type: string
+          format: uuid
+        consultation_date:
+          type: string
+          format: date-time
+        chief_complaint:
+          type: string
+          minLength: 1
+        symptoms:
+          type: string
+        clinical_findings:
+          type: string
+        assessment:
+          type: string
+        treatment_plan:
+          type: string
+        follow_up_notes:
+          type: string
+      required:
+      - chief_complaint
+      - patient
+    ConsultationStatusEnum:
+      enum:
+      - DRAFT
+      - SIGNED
+      - AMENDED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `SIGNED` - Signed
+        * `AMENDED` - Amended
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 25
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        patient_profile:
+          type: string
+          readOnly: true
+        doctor_profile:
+          type: string
+          readOnly: true
+      required:
+      - doctor_profile
+      - email
+      - id
+      - patient_profile
+    DiagnosticAttachment:
+      type: object
+      description: |-
+        Handles secure diagnostic image and document uploads.
+
+        The diagnostic request and uploader are assigned by the backend,
+        never trusted from the client's submitted JSON.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        request:
+          type: string
+          format: uuid
+          readOnly: true
+        original_filename:
+          type: string
+          readOnly: true
+        content_type:
+          type: string
+          readOnly: true
+        size_bytes:
+          type: integer
+          readOnly: true
+        attachment_type:
+          $ref: '#/components/schemas/AttachmentTypeEnum'
+        uploaded_by:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - attachment_type
+      - content_type
+      - created_at
+      - id
+      - original_filename
+      - request
+      - size_bytes
+      - uploaded_by
+    DiagnosticAttachmentRequest:
+      type: object
+      description: |-
+        Handles secure diagnostic image and document uploads.
+
+        The diagnostic request and uploader are assigned by the backend,
+        never trusted from the client's submitted JSON.
+      properties:
+        file:
+          type: string
+          format: binary
+          writeOnly: true
+        attachment_type:
+          $ref: '#/components/schemas/AttachmentTypeEnum'
+      required:
+      - attachment_type
+      - file
+    DiagnosticReportRead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        request:
+          type: string
+          format: uuid
+        patient_number:
+          type: string
+          readOnly: true
+        service_name:
+          type: string
+          readOnly: true
+        center_name:
+          type: string
+          readOnly: true
+        findings:
+          description: Structured result values; do not include untrusted executable
+            content.
+        impression:
+          type: string
+        prepared_by:
+          type: string
+          format: uuid
+        prepared_by_email:
+          type: string
+          format: email
+          readOnly: true
+        verified_by:
+          type: string
+          format: uuid
+          nullable: true
+        verified_by_email:
+          type: string
+          format: email
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/DiagnosticReportReadStatusEnum'
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - center_name
+      - id
+      - impression
+      - patient_number
+      - prepared_by
+      - prepared_by_email
+      - request
+      - service_name
+      - submitted_at
+      - verified_by_email
+    DiagnosticReportReadRequest:
+      type: object
+      properties:
+        request:
+          type: string
+          format: uuid
+        findings:
+          description: Structured result values; do not include untrusted executable
+            content.
+        impression:
+          type: string
+          minLength: 1
+        prepared_by:
+          type: string
+          format: uuid
+        verified_by:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DiagnosticReportReadStatusEnum'
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - impression
+      - prepared_by
+      - request
+    DiagnosticReportReadStatusEnum:
+      enum:
+      - SUBMITTED
+      - VERIFIED
+      - RELEASED
+      type: string
+      description: |-
+        * `SUBMITTED` - Submitted for verification
+        * `VERIFIED` - Verified
+        * `RELEASED` - Released
+    DiagnosticRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+        patient_number:
+          type: string
+          readOnly: true
+        service:
+          type: string
+          format: uuid
+        service_name:
+          type: string
+          readOnly: true
+        center_name:
+          type: string
+          readOnly: true
+        requested_by:
+          type: string
+          format: uuid
+          readOnly: true
+        requested_by_email:
+          type: string
+          format: email
+          readOnly: true
+        ordering_doctor:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        ordering_doctor_name:
+          type: string
+          readOnly: true
+          default: ''
+        clinical_indication:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DiagnosticStatusEnum'
+          readOnly: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        accepted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accepted_at
+      - center_name
+      - completed_at
+      - created_at
+      - id
+      - ordering_doctor
+      - ordering_doctor_name
+      - patient_number
+      - requested_by
+      - requested_by_email
+      - service
+      - service_name
+      - started_at
+      - status
+    DiagnosticRequestRequest:
+      type: object
+      properties:
+        patient:
+          type: string
+          format: uuid
+        service:
+          type: string
+          format: uuid
+        clinical_indication:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - service
+    DiagnosticService:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        center:
+          type: string
+          format: uuid
+        center_name:
+          type: string
+          readOnly: true
+        service_code:
+          type: string
+          maxLength: 40
+        name:
+          type: string
+          maxLength: 180
+        category:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        requires_referral:
+          type: boolean
+        fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - center
+      - center_name
+      - created_at
+      - id
+      - name
+      - service_code
+    DiagnosticServiceRequest:
+      type: object
+      properties:
+        center:
+          type: string
+          format: uuid
+        service_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+        name:
+          type: string
+          minLength: 1
+          maxLength: 180
+        category:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        requires_referral:
+          type: boolean
+        fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_active:
+          type: boolean
+      required:
+      - center
+      - name
+      - service_code
+    DiagnosticStatusEnum:
+      enum:
+      - REQUESTED
+      - ACCEPTED
+      - IN_PROGRESS
+      - REPORT_PENDING
+      - COMPLETED
+      - REJECTED
+      - CANCELLED
+      type: string
+      description: |-
+        * `REQUESTED` - Requested
+        * `ACCEPTED` - Accepted
+        * `IN_PROGRESS` - In progress
+        * `REPORT_PENDING` - Report pending verification
+        * `COMPLETED` - Completed
+        * `REJECTED` - Rejected
+        * `CANCELLED` - Cancelled
+    DoctorPatientRelationship:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+        patient_number:
+          type: string
+          readOnly: true
+        doctor:
+          type: string
+          format: uuid
+        doctor_name:
+          type: string
+          readOnly: true
+        doctor_specialization:
+          type: string
+          readOnly: true
+        relationship_type:
+          $ref: '#/components/schemas/RelationshipTypeEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DoctorPatientRelationshipStatusEnum'
+          readOnly: true
+          default: PENDING
+        initiated_by:
+          type: string
+          format: uuid
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - doctor
+      - doctor_name
+      - doctor_specialization
+      - ended_at
+      - id
+      - initiated_by
+      - patient
+      - patient_number
+      - started_at
+      - status
+    DoctorPatientRelationshipStatusEnum:
+      enum:
+      - PENDING
+      - ACTIVE
+      - REVOKED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `ACTIVE` - Active
+        * `REVOKED` - Revoked
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        version:
+          type: string
+      required:
+      - service
+      - status
+      - version
+    MediBridgeTokenObtainPairRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    Observation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+        patient_number:
+          type: string
+          readOnly: true
+        consultation:
+          type: string
+          format: uuid
+          nullable: true
+        code:
+          type: string
+          description: Optional standard code, e.g. LOINC
+          maxLength: 80
+        name:
+          type: string
+          maxLength: 150
+        numeric_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        text_value:
+          type: string
+        unit:
+          type: string
+          maxLength: 32
+        reference_low:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        reference_high:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        effective_at:
+          type: string
+          format: date-time
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        recorded_by:
+          type: string
+          format: uuid
+          readOnly: true
+        recorded_by_email:
+          type: string
+          format: email
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - patient
+      - patient_number
+      - recorded_by
+      - recorded_by_email
+      - source
+    ObservationRequest:
+      type: object
+      properties:
+        patient:
+          type: string
+          format: uuid
+        consultation:
+          type: string
+          format: uuid
+          nullable: true
+        code:
+          type: string
+          description: Optional standard code, e.g. LOINC
+          maxLength: 80
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        numeric_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        text_value:
+          type: string
+        unit:
+          type: string
+          maxLength: 32
+        reference_low:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        reference_high:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        effective_at:
+          type: string
+          format: date-time
+      required:
+      - name
+      - patient
+    PaginatedConsultationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consultation'
+    PaginatedDiagnosticReportReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticReportRead'
+    PaginatedDiagnosticRequestList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticRequest'
+    PaginatedDiagnosticServiceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticService'
+    PaginatedDoctorPatientRelationshipList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorPatientRelationship'
+    PaginatedObservationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Observation'
+    PaginatedPrescriptionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prescription'
+    PatientRegistration:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 25
+      required:
+      - email
+    PatientRegistrationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 25
+        password:
+          type: string
+          writeOnly: true
+          minLength: 10
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+      - password_confirm
+    Prescription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        prescription_number:
+          type: string
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+        patient_number:
+          type: string
+          readOnly: true
+        doctor:
+          type: string
+          format: uuid
+          readOnly: true
+        doctor_name:
+          type: string
+          readOnly: true
+        consultation:
+          type: string
+          format: uuid
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionItem'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PrescriptionStatusEnum'
+          readOnly: true
+        general_instructions:
+          type: string
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - doctor
+      - doctor_name
+      - id
+      - issued_at
+      - items
+      - patient
+      - patient_number
+      - prescription_number
+      - status
+    PrescriptionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        medication_name:
+          type: string
+          maxLength: 180
+        generic_name:
+          type: string
+          maxLength: 180
+        strength:
+          type: string
+          maxLength: 80
+        dosage:
+          type: string
+          maxLength: 100
+        route:
+          type: string
+          maxLength: 40
+        frequency:
+          type: string
+          maxLength: 100
+        duration:
+          type: string
+          maxLength: 100
+        quantity:
+          type: string
+          maxLength: 80
+        instructions:
+          type: string
+      required:
+      - dosage
+      - duration
+      - frequency
+      - id
+      - medication_name
+    PrescriptionItemRequest:
+      type: object
+      properties:
+        medication_name:
+          type: string
+          minLength: 1
+          maxLength: 180
+        generic_name:
+          type: string
+          maxLength: 180
+        strength:
+          type: string
+          maxLength: 80
+        dosage:
+          type: string
+          minLength: 1
+          maxLength: 100
+        route:
+          type: string
+          maxLength: 40
+        frequency:
+          type: string
+          minLength: 1
+          maxLength: 100
+        duration:
+          type: string
+          minLength: 1
+          maxLength: 100
+        quantity:
+          type: string
+          maxLength: 80
+        instructions:
+          type: string
+      required:
+      - dosage
+      - duration
+      - frequency
+      - medication_name
+    PrescriptionRequest:
+      type: object
+      properties:
+        patient:
+          type: string
+          format: uuid
+        consultation:
+          type: string
+          format: uuid
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionItemRequest'
+        general_instructions:
+          type: string
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - items
+      - patient
+    PrescriptionStatusEnum:
+      enum:
+      - DRAFT
+      - ISSUED
+      - CANCELLED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `ISSUED` - Issued
+        * `CANCELLED` - Cancelled
+    RelationshipCreate:
+      type: object
+      properties:
+        doctor:
+          type: string
+          format: uuid
+        relationship_type:
+          allOf:
+          - $ref: '#/components/schemas/RelationshipTypeEnum'
+          default: CONSULTING
+      required:
+      - doctor
+    RelationshipCreateRequest:
+      type: object
+      properties:
+        doctor:
+          type: string
+          format: uuid
+        relationship_type:
+          allOf:
+          - $ref: '#/components/schemas/RelationshipTypeEnum'
+          default: CONSULTING
+      required:
+      - doctor
+    RelationshipTypeEnum:
+      enum:
+      - PRIMARY
+      - CONSULTING
+      - FOLLOW_UP
+      type: string
+      description: |-
+        * `PRIMARY` - Primary care
+        * `CONSULTING` - Consulting
+        * `FOLLOW_UP` - Follow-up
+    RoleEnum:
+      enum:
+      - PATIENT
+      - DOCTOR
+      - DIAGNOSTIC_STAFF
+      - ADMIN
+      type: string
+      description: |-
+        * `PATIENT` - Patient
+        * `DOCTOR` - Doctor
+        * `DIAGNOSTIC_STAFF` - Diagnostic staff
+        * `ADMIN` - Administrator
+    SourceEnum:
+      enum:
+      - CLINICIAN
+      - PATIENT_REPORTED
+      type: string
+      description: |-
+        * `CLINICIAN` - Clinician recorded
+        * `PATIENT_REPORTED` - Patient reported
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
