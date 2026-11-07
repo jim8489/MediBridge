@@ -141,9 +141,29 @@ paths:
   /api/diagnostics/reports/{id}/download/:
     get:
       operationId: download_diagnostic_report_pdf
-      description: Generates and downloads a formatted PDF containing the diagnostic
-        report, clinical findings and impression.
       summary: Download a released diagnostic report as PDF
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Diagnostics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/diagnostics/reports/{id}/release/:
+    post:
+      operationId: diagnostics_reports_release_create
+      summary: Release a verified diagnostic report
       parameters:
       - in: path
         name: id
@@ -159,44 +179,12 @@ paths:
           content:
             application/json:
               schema:
-                type: string
-                format: binary
-          description: ''
-  /api/diagnostics/reports/{id}/release/:
-    post:
-      operationId: diagnostics_reports_release_create
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - diagnostics
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DiagnosticReportReadRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DiagnosticReportReadRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DiagnosticReportReadRequest'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
                 $ref: '#/components/schemas/DiagnosticReportRead'
           description: ''
   /api/diagnostics/reports/{id}/verify/:
     post:
       operationId: diagnostics_reports_verify_create
+      summary: Verify a submitted diagnostic report
       parameters:
       - in: path
         name: id
@@ -204,19 +192,7 @@ paths:
           type: string
         required: true
       tags:
-      - diagnostics
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DiagnosticReportReadRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DiagnosticReportReadRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DiagnosticReportReadRequest'
-        required: true
+      - Diagnostics
       security:
       - jwtAuth: []
       responses:
@@ -295,6 +271,7 @@ paths:
   /api/diagnostics/requests/{id}/accept/:
     post:
       operationId: diagnostics_requests_accept_create
+      summary: Accept a diagnostic request
       parameters:
       - in: path
         name: id
@@ -302,19 +279,7 @@ paths:
           type: string
         required: true
       tags:
-      - diagnostics
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-        required: true
+      - Diagnostics
       security:
       - jwtAuth: []
       responses:
@@ -326,15 +291,22 @@ paths:
           description: ''
   /api/diagnostics/requests/{id}/analyses/:
     get:
-      operationId: diagnostics_requests_analyses_retrieve
+      operationId: diagnostics_requests_analyses_list
+      summary: Retrieve AI analysis history
       parameters:
       - in: path
         name: id
         schema:
           type: string
         required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
       tags:
-      - diagnostics
+      - AI Diagnostics
       security:
       - jwtAuth: []
       responses:
@@ -342,7 +314,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DiagnosticRequest'
+                $ref: '#/components/schemas/PaginatedAIAnalysisReadList'
           description: ''
   /api/diagnostics/requests/{id}/analyses/{analysis_id}/review/:
     post:
@@ -447,8 +419,10 @@ paths:
           description: ''
   /api/diagnostics/requests/{id}/attachments/{attachment_id}/download/:
     get:
-      operationId: diagnostics_requests_attachments_download_retrieve
-      description: Download a diagnostic attachment after authorization.
+      operationId: download_diagnostic_attachment
+      description: Downloads an attachment after checking patient ownership, doctor-patient
+        authorization, or diagnostic-center membership.
+      summary: Download a diagnostic attachment securely
       parameters:
       - in: path
         name: attachment_id
@@ -461,19 +435,33 @@ paths:
           type: string
         required: true
       tags:
-      - diagnostics
+      - Diagnostics
       security:
       - jwtAuth: []
       responses:
         '200':
           content:
-            application/json:
+            image/jpeg:
               schema:
-                $ref: '#/components/schemas/DiagnosticRequest'
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/diagnostics/requests/{id}/start/:
     post:
       operationId: diagnostics_requests_start_create
+      summary: Start a diagnostic investigation
       parameters:
       - in: path
         name: id
@@ -481,19 +469,7 @@ paths:
           type: string
         required: true
       tags:
-      - diagnostics
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-        required: true
+      - Diagnostics
       security:
       - jwtAuth: []
       responses:
@@ -955,7 +931,7 @@ paths:
       responses:
         '200':
           content:
-            application/json:
+            application/pdf:
               schema:
                 type: string
                 format: binary
@@ -963,6 +939,7 @@ paths:
   /api/prescriptions/{id}/issue/:
     post:
       operationId: prescriptions_issue_create
+      summary: Issue a draft prescription
       parameters:
       - in: path
         name: id
@@ -970,19 +947,7 @@ paths:
           type: string
         required: true
       tags:
-      - prescriptions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PrescriptionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PrescriptionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PrescriptionRequest'
-        required: true
+      - Prescriptions
       security:
       - jwtAuth: []
       responses:
@@ -1412,39 +1377,6 @@ components:
       - service_name
       - submitted_at
       - verified_by_email
-    DiagnosticReportReadRequest:
-      type: object
-      properties:
-        request:
-          type: string
-          format: uuid
-        findings:
-          description: Structured result values; do not include untrusted executable
-            content.
-        impression:
-          type: string
-          minLength: 1
-        prepared_by:
-          type: string
-          format: uuid
-        verified_by:
-          type: string
-          format: uuid
-          nullable: true
-        status:
-          $ref: '#/components/schemas/DiagnosticReportReadStatusEnum'
-        verified_at:
-          type: string
-          format: date-time
-          nullable: true
-        released_at:
-          type: string
-          format: date-time
-          nullable: true
-      required:
-      - impression
-      - prepared_by
-      - request
     DiagnosticReportReadStatusEnum:
       enum:
       - SUBMITTED
@@ -1860,6 +1792,29 @@ components:
       required:
       - name
       - patient
+    PaginatedAIAnalysisReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIAnalysisRead'
     PaginatedConsultationList:
       type: object
       required:

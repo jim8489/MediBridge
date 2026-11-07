@@ -37,7 +37,13 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         if request.user.role != User.Role.DOCTOR:
             raise PermissionDenied("Only doctors can create prescriptions.")
         return super().create(request, *args, **kwargs)
-
+    
+    @extend_schema(
+        request=None,
+        responses={200: PrescriptionSerializer},
+        summary="Issue a draft prescription",
+        tags=["Prescriptions"],
+    )
     @action(detail=True, methods=["post"], url_path="issue")
     def issue(self, request, pk=None):
         prescription = self.get_object()
@@ -58,7 +64,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             "patient details, doctor details and medication instructions."
         ),
         responses={
-            200: OpenApiTypes.BINARY,
+            (200, "application/pdf"): OpenApiTypes.BINARY,
         },
         tags=["Prescriptions"],
     )

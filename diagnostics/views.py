@@ -132,6 +132,12 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You are not an active staff member of the assigned diagnostic center.")
         return membership
 
+    @extend_schema(
+        request=None,
+        responses={200: DiagnosticRequestSerializer},
+        summary="Accept a diagnostic request",
+        tags=["Diagnostics"],
+    )
     @action(detail=True, methods=["post"], url_path="accept")
     def accept(self, request, pk=None):
         diagnostic_request = self.get_object()
@@ -143,6 +149,12 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
         diagnostic_request.save(update_fields=["status", "accepted_at", "updated_at"])
         return Response(self.get_serializer(diagnostic_request).data)
 
+    @extend_schema(
+        request=None,
+        responses={200: DiagnosticRequestSerializer},
+        summary="Start a diagnostic investigation",
+        tags=["Diagnostics"],
+    )
     @action(detail=True, methods=["post"], url_path="start")
     def start(self, request, pk=None):
         diagnostic_request = self.get_object()
@@ -204,12 +216,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    @action(
-        detail=True,
-        methods=["get"],
-        url_path=r"attachments/(?P<attachment_id>[^/.]+)/download",
-        url_name="download-attachment",
-    )
     @extend_schema(
         operation_id="download_diagnostic_attachment",
         summary="Download a diagnostic attachment securely",
@@ -218,9 +224,18 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             "doctor-patient authorization, or diagnostic-center membership."
         ),
         responses={
-            200: OpenApiTypes.BINARY,
+            (200, "image/jpeg"): OpenApiTypes.BINARY,
+            (200, "image/png"): OpenApiTypes.BINARY,
+            (200, "application/pdf"): OpenApiTypes.BINARY,
+            (200, "application/octet-stream"): OpenApiTypes.BINARY,
         },
         tags=["Diagnostics"],
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"attachments/(?P<attachment_id>[^/.]+)/download",
+        url_name="download-attachment",
     )
     def download_attachment(self, request, pk=None, attachment_id=None):
         """
@@ -485,17 +500,18 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             AIAnalysisReadSerializer(analysis).data,
             status=status.HTTP_201_CREATED,
         )
-    @action(
-        detail=True,
-        methods=["get"],
-        url_path="analyses",
-    )
     @extend_schema(
+        request=None,
         responses={
             200: AIAnalysisReadSerializer(many=True),
         },
         summary="Retrieve AI analysis history",
         tags=["AI Diagnostics"],
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="analyses",
     )
     def analyses(self, request, pk=None):
 
@@ -1263,12 +1279,8 @@ class DiagnosticReportViewSet(viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         operation_id="download_diagnostic_report_pdf",
         summary="Download a released diagnostic report as PDF",
-        description=(
-            "Generates and downloads a formatted PDF containing "
-            "the diagnostic report, clinical findings and impression."
-        ),
         responses={
-            200: OpenApiTypes.BINARY,
+            (200, "application/pdf"): OpenApiTypes.BINARY,
         },
         tags=["Diagnostics"],
     )
@@ -1306,6 +1318,12 @@ class DiagnosticReportViewSet(viewsets.ReadOnlyModelViewSet):
             raise PermissionDenied("An active center owner, administrator, or report verifier is required.")
         return membership
 
+    @extend_schema(
+        request=None,
+        responses={200: DiagnosticReportReadSerializer},
+        summary="Verify a submitted diagnostic report",
+        tags=["Diagnostics"],
+    )
     @action(detail=True, methods=["post"], url_path="verify")
     def verify(self, request, pk=None):
         report = self.get_object()
@@ -1319,7 +1337,12 @@ class DiagnosticReportViewSet(viewsets.ReadOnlyModelViewSet):
         report.verified_at = timezone.now()
         report.save(update_fields=["status", "verified_by", "verified_at"])
         return Response(self.get_serializer(report).data)
-
+    @extend_schema(
+        request=None,
+        responses={200: DiagnosticReportReadSerializer},
+        summary="Release a verified diagnostic report",
+        tags=["Diagnostics"],
+    )
     @action(detail=True, methods=["post"], url_path="release")
     def release(self, request, pk=None):
         report = self.get_object()
