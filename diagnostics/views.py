@@ -325,30 +325,35 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             ),
         )
 
-        # Prevent sensitive files from being cached or interpreted
-        # as executable content by browsers.
         response["Cache-Control"] = "private, no-store"
         response["X-Content-Type-Options"] = "nosniff"
 
         return response
     
     @extend_schema(
-        request=AIAnalysisReviewSerializer,
-        responses={200: AIAnalysisReadSerializer},
-        summary="Review an AI analysis",
+        operation_id="analyze_chest_xray",
+        request=AIAnalysisRequestSerializer,
+        responses={
+            201: AIAnalysisReadSerializer,
+        },
+        summary="Analyze a chest X-ray using AI",
+        description=(
+            "Runs the registered TorchXRayVision model on a clinical "
+            "chest X-ray attachment and stores its pathology scores."
+        ),
         tags=["AI Diagnostics"],
     )
     @action(
         detail=True,
         methods=["post"],
-        url_path=r"analyses/(?P<analysis_id>[^/.]+)/review",
+        url_path="analyze",
     )
-    def review_analysis(self, request, pk=None, analysis_id=None):
+    def analyze(self, request, pk=None):
 
         diagnostic_request = self.get_object()
 
-        # Only assigned diagnostic-center staff can run inference.
         self._require_center_staff(diagnostic_request)
+
         service = diagnostic_request.service
 
         service_description = (
@@ -358,25 +363,22 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
         ).lower().replace("_", " ").replace("-", " ")
 
         if (
-           "chest" not in service_description
+            "chest" not in service_description
             or not any(
                 term in service_description
                 for term in ("x ray", "xray")
             )
         ):
             raise ValidationError(
-               "TorchXRayVision can only analyze chest X-ray services."
-          )
+                "TorchXRayVision can only analyze chest X-ray services."
+            )
 
         if diagnostic_request.status != DiagnosticRequest.Status.IN_PROGRESS:
             raise ValidationError(
                 "The diagnostic investigation must be in progress."
             )
 
-        serializer = AIAnalysisRequestSerializer(
-            data=request.data
-        )
-
+        serializer = AIAnalysisRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         attachment = get_object_or_404(
@@ -389,7 +391,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             pk=serializer.validated_data["attachment_id"],
         )
 
-        # Load the runtime model and get its database registration.
         try:
             database_model, runtime_model = get_registered_model()
 
@@ -397,13 +398,8 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             logger.exception(
                 "Unable to load or register the chest X-ray model."
             )
-
             return Response(
-                {
-                    "detail": (
-                        "The AI service is currently unavailable."
-                    )
-                },
+                {"detail": "The AI service is currently unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -416,8 +412,8 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             status=AIAnalysis.Status.PROCESSING,
             started_at=timezone.now(),
         )
-        try:
 
+        try:
             result = predict_attachment(
                 attachment,
                 model=runtime_model,
@@ -431,13 +427,11 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
                 )
 
             analysis.pathology_scores = pathology_scores
-
-            analysis.score_semantics = result.get(
-                "score_semantics",
-                "",
-            )
+            analysis.score_semantics = result.get("score_semantics", "")
 
             analysis.model_output = {
+                "model_key": result.get("model_key"),
+                "model_version": result.get("model_version"),
                 "weights": result.get("weights"),
                 "image_metadata": result.get("image_metadata", {}),
                 "output_count": result.get(
@@ -460,7 +454,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             )
 
         except Exception:
-
             logger.exception(
                 "Chest X-ray inference failed for analysis %s",
                 analysis.id,
@@ -488,40 +481,10 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        except Exception:
-
-            logger.exception(
-                "AI inference failed for analysis %s.",
-                analysis.id,
-            )
-
-            analysis.status = AIAnalysis.Status.FAILED
-            analysis.error_message = (
-                "Inference failed. Check server logs."
-            )
-            analysis.completed_at = timezone.now()
-
-            analysis.save(
-                update_fields=[
-                    "status",
-                    "error_message",
-                    "completed_at",
-                ]
-            )
-
-            return Response(
-                {
-                    "detail": "AI inference failed.",
-                    "analysis": AIAnalysisReadSerializer(analysis).data,
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
         return Response(
             AIAnalysisReadSerializer(analysis).data,
             status=status.HTTP_201_CREATED,
         )
-        
     @action(
         detail=True,
         methods=["get"],
@@ -540,13 +503,10 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
 
         user = request.user
 
-        # Diagnostic staff must belong to the assigned center.
         if user.role == User.Role.DIAGNOSTIC_STAFF:
 
             self._require_center_staff(diagnostic_request)
 
-        # Patients and doctors can see AI output only after
-        # the associated diagnostic report is released.
         elif user.role in (
             User.Role.PATIENT,
             User.Role.DOCTOR,
@@ -588,11 +548,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
     
-    @action(
-        detail=True,
-        methods=["post"],
-        url_path=r"analyses/(?P<analysis_id>[^/.]+)/review",
-    )
     @extend_schema(
         request=AIAnalysisReviewSerializer,
         responses={
@@ -600,6 +555,11 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
         },
         summary="Review an AI analysis",
         tags=["AI Diagnostics"],
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"analyses/(?P<analysis_id>[^/.]+)/review",
     )
     def review_analysis(self, request, pk=None, analysis_id=None):
 

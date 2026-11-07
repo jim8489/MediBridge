@@ -347,6 +347,7 @@ paths:
   /api/diagnostics/requests/{id}/analyses/{analysis_id}/review/:
     post:
       operationId: diagnostics_requests_analyses_review_create
+      summary: Review an AI analysis
       parameters:
       - in: path
         name: analysis_id
@@ -359,18 +360,18 @@ paths:
           type: string
         required: true
       tags:
-      - diagnostics
+      - AI Diagnostics
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
+              $ref: '#/components/schemas/AIAnalysisReviewRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
+              $ref: '#/components/schemas/AIAnalysisReviewRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
+              $ref: '#/components/schemas/AIAnalysisReviewRequest'
         required: true
       security:
       - jwtAuth: []
@@ -379,7 +380,42 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DiagnosticRequest'
+                $ref: '#/components/schemas/AIAnalysisRead'
+          description: ''
+  /api/diagnostics/requests/{id}/analyze/:
+    post:
+      operationId: analyze_chest_xray
+      description: Runs the registered TorchXRayVision model on a clinical chest X-ray
+        attachment and stores its pathology scores.
+      summary: Analyze a chest X-ray using AI
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - AI Diagnostics
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIAnalysisRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AIAnalysisRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AIAnalysisRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIAnalysisRead'
           description: ''
   /api/diagnostics/requests/{id}/attachments/:
     post:
@@ -958,6 +994,143 @@ paths:
           description: ''
 components:
   schemas:
+    AIAnalysisRead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        diagnostic_request:
+          type: string
+          format: uuid
+          readOnly: true
+        attachment:
+          type: string
+          format: uuid
+          readOnly: true
+        model:
+          type: string
+          format: uuid
+          readOnly: true
+        model_key:
+          type: string
+          readOnly: true
+        model_name:
+          type: string
+          readOnly: true
+        model_version:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AIAnalysisReadStatusEnum'
+          readOnly: true
+        pathology_scores:
+          readOnly: true
+        score_semantics:
+          type: string
+          readOnly: true
+        model_output:
+          readOnly: true
+        error_message:
+          type: string
+          readOnly: true
+        review_status:
+          allOf:
+          - $ref: '#/components/schemas/AIAnalysisReadReviewStatusEnum'
+          readOnly: true
+        reviewed_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - attachment
+      - completed_at
+      - created_at
+      - diagnostic_request
+      - error_message
+      - id
+      - model
+      - model_key
+      - model_name
+      - model_output
+      - model_version
+      - pathology_scores
+      - review_status
+      - reviewed_at
+      - reviewed_by
+      - score_semantics
+      - started_at
+      - status
+    AIAnalysisReadReviewStatusEnum:
+      enum:
+      - PENDING
+      - ACCEPTED
+      - REJECTED
+      type: string
+      description: |-
+        * `PENDING` - Pending Review
+        * `ACCEPTED` - Accepted
+        * `REJECTED` - Rejected
+    AIAnalysisReadStatusEnum:
+      enum:
+      - PENDING
+      - PROCESSING
+      - COMPLETED
+      - FAILED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `PROCESSING` - Processing
+        * `COMPLETED` - Completed
+        * `FAILED` - Failed
+    AIAnalysisRequestRequest:
+      type: object
+      properties:
+        attachment_id:
+          type: string
+          format: uuid
+      required:
+      - attachment_id
+    AIAnalysisReviewRequest:
+      type: object
+      properties:
+        review_status:
+          $ref: '#/components/schemas/AIAnalysisReviewReviewStatusEnum'
+        review_notes:
+          type: string
+          maxLength: 5000
+      required:
+      - review_status
+    AIAnalysisReviewReviewStatusEnum:
+      enum:
+      - ACCEPTED
+      - REJECTED
+      type: string
+      description: |-
+        * `ACCEPTED` - Accepted
+        * `REJECTED` - Rejected
     AttachmentTypeEnum:
       enum:
       - CLINICAL_IMAGE
