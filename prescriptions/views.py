@@ -10,7 +10,7 @@ from .models import Prescription
 from .serializers import PrescriptionSerializer
 
 from django.http import FileResponse
-
+from config.renderers import PDFRenderer
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 
@@ -69,11 +69,12 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         tags=["Prescriptions"],
     )
     @action(
-        detail=True,
-        methods=["get"],
-        url_path="download",
+       detail=True,
+       methods=["get"],
+       url_path="download",
+       renderer_classes=[PDFRenderer],
     )
-    def download_pdf(self, request, pk=None):
+    def download_pdf(self, request, *args, **kwargs):
 
         prescription = self.get_object()
 

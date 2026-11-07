@@ -11,6 +11,7 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 import logging
 from drf_spectacular.types import OpenApiTypes
+from config.renderers import PDFRenderer
 
 from io import BytesIO
 from xml.sax.saxutils import escape
@@ -308,19 +309,16 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
                     "You are not authorized to download this diagnostic file."
                 )
 
-        # Step 5: Diagnostic-center staff authorization.
         elif user.role == User.Role.DIAGNOSTIC_STAFF:
 
             self._require_center_staff(diagnostic_request)
 
-        # Step 6: Administrative access.
         elif not user.is_staff:
 
             raise PermissionDenied(
                 "You are not authorized to download this file."
             )
 
-        # Step 7: Open the file through the private storage backend.
         try:
             file_handle = attachment.file.open("rb")
 
@@ -329,7 +327,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
                 "The diagnostic attachment file could not be found."
             )
 
-        # Step 8: Stream the file instead of exposing its storage URL.
         response = FileResponse(
             file_handle,
             as_attachment=True,
@@ -418,7 +415,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        # Create a traceable analysis record before inference.
         analysis = AIAnalysis.objects.create(
             diagnostic_request=diagnostic_request,
             attachment=attachment,
@@ -678,7 +674,6 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
 
         selected_analysis = None
 
-        # Validate and retrieve the optional AI analysis.
         if ai_analysis_id:
 
             selected_analysis = get_object_or_404(
@@ -715,10 +710,8 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
                     "The AI analysis has no stored pathology scores."
                 )
 
-        # Preserve clinician-entered findings.
         findings = dict(validated_data["findings"])
 
-        # Attach a snapshot of the reviewed AI output.
         if selected_analysis:
 
             reviewer = selected_analysis.reviewed_by
@@ -975,7 +968,6 @@ def generate_diagnostic_report_pdf(report):
     )
     findings = dict(report.findings or {})
 
-    # Separate AI assistance from clinician-entered findings.
     ai_assistance = findings.pop("ai_assistance", None)
 
     # ---------------------------------------
@@ -1279,6 +1271,7 @@ class DiagnosticReportViewSet(viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         operation_id="download_diagnostic_report_pdf",
         summary="Download a released diagnostic report as PDF",
+        description="Downloads a formatted PDF of a released diagnostic report.",
         responses={
             (200, "application/pdf"): OpenApiTypes.BINARY,
         },
@@ -1288,6 +1281,7 @@ class DiagnosticReportViewSet(viewsets.ReadOnlyModelViewSet):
         detail=True,
         methods=["get"],
         url_path="download",
+        renderer_classes=[PDFRenderer],
     )
     def download_pdf(self, request, pk=None):
 
