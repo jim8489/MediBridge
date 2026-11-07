@@ -332,20 +332,18 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
 
         return response
     
+    @extend_schema(
+        request=AIAnalysisReviewSerializer,
+        responses={200: AIAnalysisReadSerializer},
+        summary="Review an AI analysis",
+        tags=["AI Diagnostics"],
+    )
     @action(
         detail=True,
         methods=["post"],
-        url_path="analyze",
+        url_path=r"analyses/(?P<analysis_id>[^/.]+)/review",
     )
-    @extend_schema(
-        request=AIAnalysisRequestSerializer,
-        responses={
-            201: AIAnalysisReadSerializer,
-        },
-        summary="Analyze a chest X-ray using AI",
-        tags=["AI Diagnostics"],
-    )
-    def analyze(self, request, pk=None):
+    def review_analysis(self, request, pk=None, analysis_id=None):
 
         diagnostic_request = self.get_object()
 
@@ -663,15 +661,15 @@ class DiagnosticRequestViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        request=DiagnosticReportCreateSerializer,
+        responses={201: DiagnosticReportReadSerializer},
+        tags=["Diagnostics"],
+    )
     @action(
         detail=True,
         methods=["post"],
         url_path="submit-report",
-    )
-    @extend_schema(
-        request=DiagnosticReportCreateSerializer,
-        responses=DiagnosticReportReadSerializer,
-        tags=["Diagnostics"],
     )
     def submit_report(self, request, pk=None):
 

@@ -381,38 +381,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DiagnosticRequest'
           description: ''
-  /api/diagnostics/requests/{id}/analyze/:
-    post:
-      operationId: diagnostics_requests_analyze_create
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - diagnostics
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DiagnosticRequest'
-          description: ''
   /api/diagnostics/requests/{id}/attachments/:
     post:
       operationId: upload_diagnostic_attachment
@@ -509,27 +477,27 @@ paths:
           type: string
         required: true
       tags:
-      - diagnostics
+      - Diagnostics
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
+              $ref: '#/components/schemas/DiagnosticReportCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
+              $ref: '#/components/schemas/DiagnosticReportCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DiagnosticRequestRequest'
+              $ref: '#/components/schemas/DiagnosticReportCreateRequest'
         required: true
       security:
       - jwtAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DiagnosticRequest'
+                $ref: '#/components/schemas/DiagnosticReportRead'
           description: ''
   /api/diagnostics/services/:
     get:
@@ -1192,6 +1160,21 @@ components:
       required:
       - attachment_type
       - file
+    DiagnosticReportCreateRequest:
+      type: object
+      properties:
+        findings:
+          description: Structured result values; do not include untrusted executable
+            content.
+        impression:
+          type: string
+          minLength: 1
+        ai_analysis_id:
+          type: string
+          format: uuid
+          writeOnly: true
+      required:
+      - impression
     DiagnosticReportRead:
       type: object
       properties:
